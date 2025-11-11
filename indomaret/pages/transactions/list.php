@@ -7,7 +7,8 @@ include ROOTPATH . "/includes/header.php";
 $query = "
     SELECT s.id AS sale_id, 
            c.name AS cashier_name, 
-           v.code AS voucher_code
+           v.code AS voucher_code,
+           s.status
     FROM sales s
     LEFT JOIN cashiers c ON s.cashier_id = c.id
     LEFT JOIN voucher v ON s.voucher_id = v.id
@@ -27,11 +28,12 @@ $result = mysqli_query($conn, $query);
                 <th>Sale ID</th>
                 <th>Cashier</th>
                 <th>Voucher</th>
+                <th>Status</th>
                 <th colspan="4">Aksi</th>
             </tr>
         </thead>
         <tbody>
-            <?php 
+            <?php
             $no = 1;
             while ($row = mysqli_fetch_assoc($result)) { ?>
             <tr>
@@ -39,10 +41,10 @@ $result = mysqli_query($conn, $query);
                 <td><?= htmlspecialchars($row['sale_id']) ?></td>
                 <td><?= htmlspecialchars($row['cashier_name'] ?? '-') ?></td>
                 <td><?= htmlspecialchars($row['voucher_code'] ?? '-') ?></td>
+                <td><?= htmlspecialchars($row['status'] ?? '-') ?></td>
                 <td>
                     <a href="transactions_details.php?sale_id=<?= $row['sale_id'] ?>">View Details</a>
                 </td>
-
                 <td>
                     <a href="edit.php?id=<?= $row['sale_id'] ?>">Edit</a>
                 </td>

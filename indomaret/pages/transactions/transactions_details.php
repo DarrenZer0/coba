@@ -11,9 +11,8 @@ if ($sale_id <= 0) {
     exit;
 }
 
-// --- Get transaction header (date, cashier, voucher)
 $header_query = "
-    SELECT s.id AS sale_id, s.created_at, 
+    SELECT s.id AS sale_id, s.created_at, s.status,
            c.name AS cashier_name, 
            v.code AS voucher_code
     FROM sales s
@@ -24,7 +23,6 @@ $header_query = "
 $header_result = mysqli_query($conn, $header_query);
 $header = mysqli_fetch_assoc($header_result);
 
-// --- Get transaction details (products)
 $query = "
     SELECT td.id, p.name AS product_name, td.quantity, td.price, td.subtotal
     FROM transactions_detail td
@@ -41,9 +39,9 @@ $total = $total_row['total'] ?? 0;
 ?>
 
 <style>
-    del {
-        color: red;
-    }
+del {
+    color: red;
+}
 </style>
 
 <center>
@@ -51,110 +49,129 @@ $total = $total_row['total'] ?? 0;
 
     <datalist id="products">
         <?php
-            $query_product = mysqli_query($conn, "SELECT * FROM products");
-            while($product = mysqli_fetch_assoc($query_product)) {
-                ?>
-                <option value="<?=$product['name']?>">
-            <?php
-        }
-        ?>
+        $query_product = mysqli_query($conn, "SELECT * FROM products");
+        while ($product = mysqli_fetch_assoc($query_product)) { ?>
+        <option value="<?= $product['name'] ?>">
+            <?php } ?>
     </datalist>
     <input type="text" list="products" name="product_id" placeholder="Search Products..." autocomplete="off">
 
-    <!-- Payment button and status -->
     <div style="margin-top:10px;">
+        <?php if ($header['status'] !== 'paid') { ?>
         <button id="paymentButton" type="button">Payment</button>
+        <?php } ?>
+        <?php if ($header['status'] === 'paid') { ?>
+        <span id="paymentStatus" style="margin-left:12px; font-weight:bold; color:green;">PAID</span>
+        <?php } else { ?>
         <span id="paymentStatus" style="margin-left:12px; font-weight:bold; color:green;"></span>
+        <?php } ?>
     </div>
 
-    <a href="list.php"><-- Back to Sales</a><br><br>
+    <a href="list.php">
+        <-- Back to Sales</a><br><br>
 
-    <table border="1" cellpadding="10" cellspacing="0" width="80%">
-        <tr>
-            <td>
-                <?= htmlspecialchars($header['created_at']) ?>
-            </td>
-            <td align="right">
-                <?= $header['sale_id'] ?> / 
-                <?= htmlspecialchars($header['cashier_name'] ?? '-') ?>
-            </td>
-        </tr>
-    </table>
-    <br>
+            <table border="1" cellpadding="10" cellspacing="0" width="80%">
+                <tr>
+                    <td><?= htmlspecialchars($header['created_at']) ?></td>
+                    <td align="right"><?= $header['sale_id'] ?> /
+                        <?= htmlspecialchars($header['cashier_name'] ?? '-') ?></td>
+                </tr>
+            </table>
+            <br>
 
-    <table border="1" cellpadding="10" cellspacing="0" width="80%">
-        <thead>
-            <tr>
-                <th>No</th>
-                <th>Product</th>
-                <th>Quantity</th>
-                <th>Price</th>
-                <th>Subtotal</th>
-            </tr>
-        </thead>
-        <tbody>
-            <?php 
+            <table border="1" cellpadding="10" cellspacing="0" width="80%">
+                <thead>
+                    <tr>
+                        <th>No</th>
+                        <th>Product</th>
+                        <th>Quantity</th>
+                        <th>Price</th>
+                        <th>Subtotal</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php
             $no = 1;
             $total_discounted = 0;
             while ($row = mysqli_fetch_assoc($result)) { ?>
-            <tr>
-                <td><?= $no++ ?></td>
-                <td><?= htmlspecialchars($row['product_name']) ?></td>
-                <td><?= number_format($row['quantity'], 0, ',', '.') ?></td>
+                    <tr>
+                        <td><?= $no++ ?></td>
+                        <td><?= htmlspecialchars($row['product_name']) ?></td>
+                        <td><?= number_format($row['quantity'], 0, ',', '.') ?></td>
 
-                <?php
-                $display_price = number_format($row['price'], 0, ',', '.');
-                $harga_diskon = null;
-                $discounted_subtotal = $row['subtotal'];
-                if (!empty($header['voucher_code'])) {
-                    $voucher_id = $header['voucher_code'];
-                    $diskon = mysqli_query($conn, "SELECT discount, max_discount FROM voucher WHERE code = '" . mysqli_real_escape_string($conn, $voucher_id) . "'");
-                    if(mysqli_num_rows($diskon) > 0){
-                        $diskon = mysqli_fetch_assoc($diskon);
-                        $harga_diskon = $row['price'] - ($row['price'] * $diskon['discount'] / 100);
-                        if($diskon['max_discount'] > 0 && ($row['price'] * $diskon['discount'] / 100) > $diskon['max_discount']){
-                            $harga_diskon = $row['price'] - $diskon['max_discount'];
+                        <?php
+                    $display_price = number_format($row['price'], 0, ',', '.');
+                    $harga_diskon = null;
+                    $discounted_subtotal = $row['subtotal'];
+                    if (!empty($header['voucher_code'])) {
+                        $voucher_id = $header['voucher_code'];
+                        $diskon = mysqli_query($conn, "SELECT discount, max_discount FROM voucher WHERE code = '" . mysqli_real_escape_string($conn, $voucher_id) . "'");
+                        if (mysqli_num_rows($diskon) > 0) {
+                            $diskon = mysqli_fetch_assoc($diskon);
+                            $harga_diskon = $row['price'] - ($row['price'] * $diskon['discount'] / 100);
+                            if ($diskon['max_discount'] > 0 && ($row['price'] * $diskon['discount'] / 100) > $diskon['max_discount']) {
+                                $harga_diskon = $row['price'] - $diskon['max_discount'];
+                            }
+                            $discounted_subtotal = $harga_diskon * $row['quantity'];
                         }
-                        $discounted_subtotal = $harga_diskon * $row['quantity'];
                     }
-                }
-                $total_discounted += $discounted_subtotal;
-                ?>
-                <td>
-                    <?php if ($harga_diskon !== null) { ?>
-                        <del><?= $display_price ?></del><br>
-                        <?= number_format($harga_diskon, 0, ',', '.') ?>
-                    <?php } else { ?>
-                        <?= $display_price ?>
-                    <?php } ?> 
-                </td>
-                <td><?= number_format($discounted_subtotal, 0, ',', '.') ?></td>
-            </tr>
-            <?php } ?>
+                    $total_discounted += $discounted_subtotal;
+                    ?>
 
-            <tr>
-                <td colspan="4" align="right"><strong>Total</strong></td>
-                <td><strong><?= number_format($total_discounted, 0, ',', '.') ?></strong></td>
-            </tr>
-        </tbody>
-    </table>
+                        <td>
+                            <?php if ($harga_diskon !== null) { ?>
+                            <del><?= $display_price ?></del><br>
+                            <?= number_format($harga_diskon, 0, ',', '.') ?>
+                            <?php } else { ?>
+                            <?= $display_price ?>
+                            <?php } ?>
+                        </td>
+                        <td><?= number_format($discounted_subtotal, 0, ',', '.') ?></td>
+                    </tr>
+                    <?php } ?>
+
+                    <tr>
+                        <td colspan="4" align="right"><strong>Total</strong></td>
+                        <td><strong><?= number_format($total_discounted, 0, ',', '.') ?></strong></td>
+                    </tr>
+                </tbody>
+            </table>
 </center>
 
 <?php include "../../includes/footer.php"; ?>
 
 <script>
-// Payment button behavior: show alert, update status text, disable button
-document.addEventListener('DOMContentLoaded', function(){
+document.addEventListener('DOMContentLoaded', function() {
     var btn = document.getElementById('paymentButton');
     var status = document.getElementById('paymentStatus');
     if (!btn || !status) return;
-    btn.addEventListener('click', function(){
-        alert('Transaction has been paid.');
-        var now = new Date();
-        var ts = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0') + ' ' + String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0') + ':' + String(now.getSeconds()).padStart(2,'0');
-        status.textContent = 'PAID at ' + ts;
-        btn.disabled = true;
-        btn.textContent = 'Paid';
+
+    btn.addEventListener('click', function() {
+        if (!confirm('Are you sure you want to mark this transaction as paid?')) return;
+
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', '', true);
+        xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+        xhr.onload = function() {
+            if (xhr.status === 200 && xhr.responseText === 'success') {
+                alert('Transaction has been marked as paid.');
+                status.textContent = 'PAID';
+                btn.style.display = 'none';
+            } else {
+                alert('Failed to update payment status. Please try again.');
+            }
+        };
+        xhr.send('action=mark_paid&sale_id=<?= $sale_id ?>');
     });
 });
 </script>
+
+<?php
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'mark_paid') {
+    $sale_id = intval($_POST['sale_id']);
+    if ($sale_id > 0) {
+        $update = mysqli_query($conn, "UPDATE sales SET status='paid' WHERE id=$sale_id");
+        echo $update ? 'success' : 'error';    }
+    exit;
+}
+?>

@@ -30,7 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit'])) {
     $created_at = date('Y-m-d H:i:s');
     $total = 0;
 
-    $insert = mysqli_query($conn, "INSERT INTO sales (created_at, cashier_id, voucher_id) VALUES ('{$created_at}'," . ($cashier_id ? $cashier_id : 'NULL') . ", " . ($voucher_id ? $voucher_id : 'NULL') . ")");
+    $insert = mysqli_query($conn, "INSERT INTO sales (created_at, cashier_id, voucher_id, status) VALUES ('{$created_at}'," . ($cashier_id ? $cashier_id : 'NULL') . ", " . ($voucher_id ? $voucher_id : 'NULL') . ", 'unpaid')");
     if ($insert) {
         $sale_id = mysqli_insert_id($conn);
 
@@ -93,27 +93,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit'])) {
             <tr>
                 <td colspan="2"><strong>Products:</strong></td>
             </tr>
-                    <tr>
-                        <td colspan="2">
-                            <label for="productSearch">Search products:</label>
-                            <input type="search" id="productSearch" placeholder="Type product name to filter" autocomplete="off" style="width:100%; padding:6px;">
-                        </td>
-                    </tr>
+            <tr>
+                <td colspan="2">
+                    <label for="productSearch">Search products:</label>
+                    <input type="search" id="productSearch" placeholder="Type product name to filter" autocomplete="off"
+                        style="width:100%; padding:6px;">
+                </td>
+            </tr>
             <?php
             $products = mysqli_query($conn, "SELECT id, name, price, stocks FROM products");
             while ($p = mysqli_fetch_assoc($products)) {
             ?>
-            <tr class="product-row" data-name="<?= htmlspecialchars(strtolower($p['name']), ENT_QUOTES) ?>">
-                <td>
-                    <button type="button" class="add-btn" data-id="<?= $p['id'] ?>" data-name="<?= htmlspecialchars($p['name'], ENT_QUOTES) ?>" data-price="<?= $p['price'] ?>">Add</button>
-                    <?= htmlspecialchars($p['name']) ?> <br>
-                    <small>Price: <?= number_format($p['price'], 0, ',', '.') ?> | Stock: <?= number_format($p['stocks'], 0, ',', '.') ?></small>
-                </td>
-                <td>
-                    <input type="hidden" name="product_id[]" value="<?= $p['id'] ?>">
-                    <input type="number" name="quantity[]" min="0" max="<?= $p['stocks'] ?>" value="0">
-                </td>
-            </tr>
+                <tr class="product-row" data-name="<?= htmlspecialchars(strtolower($p['name']), ENT_QUOTES) ?>">
+                    <td>
+                        <button type="button" class="add-btn" data-id="<?= $p['id'] ?>"
+                            data-name="<?= htmlspecialchars($p['name'], ENT_QUOTES) ?>"
+                            data-price="<?= $p['price'] ?>">Add</button>
+                        <?= htmlspecialchars($p['name']) ?> <br>
+                        <small>Price: <?= number_format($p['price'], 0, ',', '.') ?> | Stock:
+                            <?= number_format($p['stocks'], 0, ',', '.') ?></small>
+                    </td>
+                    <td>
+                        <input type="hidden" name="product_id[]" value="<?= $p['id'] ?>">
+                        <input type="number" name="quantity[]" min="0" max="<?= $p['stocks'] ?>" value="0">
+                    </td>
+                </tr>
             <?php } ?>
             <tr>
                 <td></td>
@@ -123,36 +127,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit'])) {
     </form>
 </center>
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    var search = document.getElementById('productSearch');
-    if (search) {
-        search.addEventListener('input', function() {
-            var q = this.value.trim().toLowerCase();
-            var rows = document.querySelectorAll('.product-row');
-            rows.forEach(function(r) {
-                var name = r.getAttribute('data-name') || '';
-                if (q === '' || name.indexOf(q) !== -1) {
-                    r.style.display = '';
-                } else {
-                    r.style.display = 'none';
+    document.addEventListener('DOMContentLoaded', function() {
+        var search = document.getElementById('productSearch');
+        if (search) {
+            search.addEventListener('input', function() {
+                var q = this.value.trim().toLowerCase();
+                var rows = document.querySelectorAll('.product-row');
+                rows.forEach(function(r) {
+                    var name = r.getAttribute('data-name') || '';
+                    if (q === '' || name.indexOf(q) !== -1) {
+                        r.style.display = '';
+                    } else {
+                        r.style.display = 'none';
+                    }
+                });
+            });
+        }
+
+        var addButtons = document.querySelectorAll('.add-btn');
+        addButtons.forEach(function(btn) {
+            x
+            btn.addEventListener('click', function() {
+                var row = btn.closest('.product-row');
+                if (!row) return;
+                var qtyInput = row.querySelector('input[type="number"][name="quantity[]"]');
+                if (qtyInput) {
+                    qtyInput.value = Math.max(1, parseInt(qtyInput.value) || 1);
+                    qtyInput.focus();
                 }
             });
         });
-    }
-
-    var addButtons = document.querySelectorAll('.add-btn');
-    addButtons.forEach(function(btn) {x
-        btn.addEventListener('click', function() {
-            var row = btn.closest('.product-row');
-            if (!row) return;
-            var qtyInput = row.querySelector('input[type="number"][name="quantity[]"]');
-            if (qtyInput) {
-                qtyInput.value = Math.max(1, parseInt(qtyInput.value) || 1);
-                qtyInput.focus();
-            }
-        });
     });
-});
 </script>
 
 <?php include ROOTPATH . "/includes/footer.php"; ?>
